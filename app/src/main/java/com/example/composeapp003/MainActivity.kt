@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -37,10 +38,15 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonElevation
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
@@ -54,7 +60,15 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerState
+import androidx.compose.material3.getSelectedDate
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberSearchBarState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -62,6 +76,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -74,10 +89,13 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.constraintlayout.compose.ChainStyle
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
@@ -89,6 +107,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.composeapp003.ui.theme.ComposeApp003Theme
 import kotlinx.coroutines.launch
+import org.intellij.lang.annotations.JdkConstants
+import java.time.LocalDate
+import java.time.LocalTime
 import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
@@ -104,7 +125,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun App(){
+fun App() {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
@@ -239,292 +260,450 @@ data class BarItem(
     val route: String
 )
 
+object TypesTasks{
+    val buttons = listOf(
+        TypeTask("Все",
+            onClick = {
+            }),
+        TypeTask("Активные",
+            onClick = {}),
+        TypeTask("Завершенные",
+            onClick = {})
+    )
+}
+
+data class TypeTask(
+    val type: String,
+    val onClick:()-> Unit
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Home(
     navController: NavController
 ) {
-    val taskList = remember {
+    val allTask = remember {
         mutableStateListOf<Task>(
             Task("2131", "3242", "32423"),
             Task("213123444364336564564564565464566546446364364", "3223442", "32424353"),
             Task("2131234", "3242234", "324352223")
         )
     }
-   Scaffold(
-       bottomBar = { BottomNavigationBar(navController) },
-       containerColor = Color(233, 239, 246),
-       floatingActionButton = {
-           FloatingActionButton(
-               onClick = {},
-               shape = CircleShape,
-               elevation = FloatingActionButtonDefaults.elevation(1.dp),
-               containerColor = Color(35, 149, 215)
-           ) {
-               Icon(imageVector = Icons.Filled.Add,
-                   contentDescription = "Plus",
-                   modifier = Modifier,
-                   tint = Color.White)
-           }
-       },
-       floatingActionButtonPosition = FabPosition.End
-   ) { innerPadding ->
-       Box(
-           modifier = Modifier.padding(innerPadding)
-       ){
-           val buttons = listOf("Все", "Активные", "Завершенные")
-           var selectedIndex by remember { mutableStateOf(0) }
+    var showDialog by remember { mutableStateOf(false) }
+    var typeVisTask by remember { mutableStateOf(TypeVisTask.ALL_TASK) }
+    Scaffold(
+        bottomBar = { BottomNavigationBar(navController) },
+        containerColor = Color(233, 239, 246),
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showDialog = true },
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(1.dp),
+                containerColor = Color(35, 149, 215)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Plus",
+                    modifier = Modifier,
+                    tint = Color.White
+                )
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            var selectedIndex by remember { mutableStateOf(0) }
 
-           Column(
-               modifier = Modifier
-                   .fillMaxSize()
-                   .padding(vertical = 10.dp, horizontal = 20.dp)
-           ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 10.dp, horizontal = 20.dp)
+            ) {
 
-               Row(
-                   horizontalArrangement = Arrangement.SpaceBetween,
-               ) {
-                   Column(
-                       modifier = Modifier.weight(1f)
-                   ) {
-                       Text(
-                           "Привет!\uD83D\uDC4B",
-                           style = TextStyle(
-                               fontSize = 30.sp,
-                               fontWeight = FontWeight(600)
-                           )
-                       )
-                       Text(
-                           "Сегодня отличное время для новых достижений",
-                           style = TextStyle(
-                               color = Color.Gray
-                           ),
-                           modifier = Modifier.padding(top = 10.dp)
-                       )
-                   }
-                   Column(
-                       modifier = Modifier.weight(1f),
-                       horizontalAlignment = Alignment.End
-                   ) {
-                       IconButton(
-                           onClick = {},
-                           modifier = Modifier
-                       ) {
-                           Icon(
-                               imageVector = Icons.Default.Settings,
-                               contentDescription = "settings"
-                           )
-                       }
-                   }
-               }
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            "Привет!\uD83D\uDC4B",
+                            style = TextStyle(
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight(600)
+                            )
+                        )
+                        Text(
+                            "Сегодня отличное время для новых достижений",
+                            style = TextStyle(
+                                color = Color.Gray
+                            ),
+                            modifier = Modifier.padding(top = 10.dp)
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        IconButton(
+                            onClick = {},
+                            modifier = Modifier
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "settings"
+                            )
+                        }
+                    }
+                }
 
-               val searchBarState = rememberSearchBarState()
-               val textFieldState = rememberTextFieldState()
-               val scope = rememberCoroutineScope()
-               SearchBar(
-                   modifier = Modifier
-                       .fillMaxWidth()
-                       .padding(top = 20.dp),
-                   colors = SearchBarDefaults.colors(
-                       containerColor = Color.White,
-                       dividerColor = Color.Transparent,
-                       inputFieldColors = SearchBarDefaults.inputFieldColors(
-                           focusedContainerColor = Color.White,
-                           unfocusedContainerColor = Color.White,
-                           disabledContainerColor = Color.White,
-                           focusedTextColor = Color.Black,
-                           unfocusedTextColor = Color.Black,
-                           cursorColor = Color.Black,
-                           focusedPlaceholderColor = Color.Gray,
-                           unfocusedPlaceholderColor = Color.Gray,
-                           focusedLeadingIconColor = Color.Black,
-                           unfocusedLeadingIconColor = Color.Gray
-                       )
-                   ),
-                   state = searchBarState,
-                   inputField = @Composable {
-                       SearchBarDefaults.InputField(
-                           textFieldState = textFieldState,
-                           searchBarState = searchBarState,
-                           onSearch = {
-                               scope.launch { searchBarState.animateToCollapsed() }
-                           },
-                           placeholder = { Text("Поиск задач...") },
-                           leadingIcon = {
-                               if (searchBarState.currentValue == SearchBarValue.Expanded) {
-                                   IconButton(onClick = { scope.launch { searchBarState.animateToCollapsed() } }) {
-                                       Icon(Icons.AutoMirrored.Default.ArrowBack, "Назад")
-                                   }
-                               } else {
-                                   Icon(Icons.Default.Search, null)
-                               }
-                           }
-                       )
-                   }
-               )
+                val searchBarState = rememberSearchBarState()
+                val textFieldState = rememberTextFieldState()
+                val scope = rememberCoroutineScope()
+                SearchBar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp),
+                    colors = SearchBarDefaults.colors(
+                        containerColor = Color.White,
+                        dividerColor = Color.Transparent,
+                        inputFieldColors = SearchBarDefaults.inputFieldColors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            disabledContainerColor = Color.White,
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
+                            cursorColor = Color.Black,
+                            focusedPlaceholderColor = Color.Gray,
+                            unfocusedPlaceholderColor = Color.Gray,
+                            focusedLeadingIconColor = Color.Black,
+                            unfocusedLeadingIconColor = Color.Gray
+                        )
+                    ),
+                    state = searchBarState,
+                    inputField = @Composable {
+                        SearchBarDefaults.InputField(
+                            textFieldState = textFieldState,
+                            searchBarState = searchBarState,
+                            onSearch = {
+                                scope.launch { searchBarState.animateToCollapsed() }
+                            },
+                            placeholder = { Text("Поиск задач...") },
+                            leadingIcon = {
+                                if (searchBarState.currentValue == SearchBarValue.Expanded) {
+                                    IconButton(onClick = { scope.launch { searchBarState.animateToCollapsed() } }) {
+                                        Icon(Icons.AutoMirrored.Default.ArrowBack, "Назад")
+                                    }
+                                } else {
+                                    Icon(Icons.Default.Search, null)
+                                }
+                            }
+                        )
+                    }
+                )
 
-               Text(
-                   "Мои задачи",
-                   style = TextStyle(
-                       fontSize = 20.sp,
-                       fontWeight = FontWeight(600)
-                   ),
-                   modifier = Modifier
-                       .padding(top = 20.dp)
-               )
-               Row(
-                   modifier = Modifier
-                       .fillMaxWidth()
-                       .padding(top = 20.dp),
-                   horizontalArrangement = Arrangement.SpaceBetween
-               ) {
-                   buttons.forEachIndexed { index, string ->
-                       val isSelected = (index == selectedIndex)
-                       Button(
-                           onClick = {
-                               selectedIndex = index
-                           },
-                           colors = ButtonDefaults.buttonColors(
-                               if (isSelected)
-                                   Color(35, 149, 215)
-                               else
-                                   Color.White
-                           )
-                       ) {
-                           Text(
-                               string,
-                               style = TextStyle(
-                                   color =
-                                       if (isSelected)
-                                           Color.White
-                                       else
-                                           Color.Black
-                               )
-                           )
-                       }
-                   }
-               }
-               LazyColumn(
-                   modifier = Modifier
-                       .fillMaxWidth()
-                       .padding(top = 20.dp),
-               ) {
-                   items(taskList) { task ->
-                       val (completed, onChangeState) = remember { mutableStateOf(false) }
-                       val colorLine = remember {
-                           Color(
-                               Random.nextInt(255),
-                               Random.nextInt(255),
-                               Random.nextInt(255)
-                           )
-                       }
-                       Card(
-                           modifier = Modifier
-                               .fillMaxWidth()
-                               .padding(vertical = 10.dp)
-                               .clickable(
-                                   onClick = { onChangeState(!completed) }
-                               ),
-                           elevation = CardDefaults.cardElevation(1.dp)
-                       ) {
-                           ConstraintLayout(
-                               modifier = Modifier
-                                   .fillMaxSize()
-                                   .background(Color.White)
-                           ) {
-                               val (boxLine, checkBox, taskText, dayTimeText, arrow, calendar) = createRefs()
-                               Box(
-                                   modifier = Modifier
-                                       .width(8.dp)
-                                       .background(colorLine)
-                                       .constrainAs(boxLine) {
-                                           start.linkTo(parent.start)
-                                           top.linkTo(parent.top)
-                                           bottom.linkTo(parent.bottom)
-                                           height = Dimension.fillToConstraints
-                                       }
-                               )
-                               CircleCheckBox(
-                                   completed, onChangeState,
-                                   Modifier
-                                       .padding(10.dp)
-                                       .constrainAs(checkBox) {
-                                           start.linkTo(boxLine.end)
-                                           top.linkTo(parent.top)
-                                       }
-                               )
-                               Text(
-                                   task.task,
-                                   modifier = Modifier
-                                       .padding(top = 15.dp)
-                                       .constrainAs(taskText) {
-                                           start.linkTo(checkBox.end)
-                                           top.linkTo(parent.top)
-                                           end.linkTo(arrow.start)
-                                           horizontalBias = 0f
-                                           width = Dimension.fillToConstraints
-                                       },
-                                   style = TextStyle(
-                                       color = Color.Black,
-                                       fontSize = 20.sp
-                                   )
-                               )
-                               Icon(
-                                   imageVector = Icons.Default.CalendarMonth,
-                                   contentDescription = "ic_calendar",
-                                   tint = Color.LightGray,
-                                   modifier = Modifier
-                                       .padding(vertical = 10.dp)
-                                       .constrainAs(calendar) {
-                                           start.linkTo(checkBox.end)
-                                           top.linkTo(taskText.bottom)
-                                           horizontalBias = 0f
-                                       }
-                               )
-                               Text(
-                                   task.day + ", " + task.time,
-                                   textDecoration =
-                                       if (completed) TextDecoration.LineThrough
-                                       else TextDecoration.None,
-                                   modifier = Modifier
-                                       .padding(vertical = 10.dp)
-                                       .constrainAs(dayTimeText) {
-                                           start.linkTo(calendar.end, 10.dp)
-                                           top.linkTo(taskText.bottom)
-                                           end.linkTo(arrow.start)
-                                           horizontalBias = 0f
-                                       }
-                               )
-                               Icon(
-                                   imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                   contentDescription = "ic_arrow",
-                                   tint = Color.LightGray,
-                                   modifier = Modifier.constrainAs(arrow) {
-                                       end.linkTo(parent.end, 10.dp)
-                                       centerVerticallyTo(parent)
-                                   }
-                               )
-                           }
-                       }
-                   }
-               }
-           }
-       }
-   }
+                Text(
+                    "Мои задачи",
+                    style = TextStyle(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight(600)
+                    ),
+                    modifier = Modifier
+                        .padding(top = 20.dp)
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TypesTasks.buttons.forEachIndexed { index, task ->
+                        val isSelected = (index == selectedIndex)
+                        Button(
+                            onClick = {
+                                task.onClick()
+                                selectedIndex = index
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                if (isSelected)
+                                    Color(35, 149, 215)
+                                else
+                                    Color.White
+                            )
+                        ) {
+                            Text(
+                                task.type,
+                                style = TextStyle(
+                                    color =
+                                        if (isSelected)
+                                            Color.White
+                                        else
+                                            Color.Black
+                                )
+                            )
+                        }
+                    }
+                }
+
+                ListTask(allTask, typeVisTask.onChoise)
+
+                if (showDialog) {
+                    Dialog(
+                        onDismissRequest = {
+                            showDialog = false
+                        },
+                        properties = DialogProperties()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .background(Color.White)
+                                .padding(20.dp)
+                        ) {
+                            DialogTask(
+                                onConfirm = { task, day, time ->
+                                    allTask.add(Task(task, day, time))
+                                    showDialog = false
+                                },
+                                onCancel = {
+                                    showDialog = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+enum class TypeVisTask(val onChoise:(task: Task)-> Boolean){
+    ALL_TASK({true}),
+    ACTIVE_TASK({task ->
+        task.completed
+    }),
+    COMPLETE_TASK({task ->
+        !task.completed
+    })
 }
 
 @Composable
-fun DialogTask(){
-
+fun ListTask(listTask: SnapshotStateList<Task>, onChoise: (task: Task) -> Boolean){
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 20.dp),
+    ) {
+        items(listTask) { task ->
+            if(onChoise(task)){
+                val (completed, onChangeState) = remember { mutableStateOf(false) }
+                val colorLine = remember {
+                    Color(
+                        Random.nextInt(255),
+                        Random.nextInt(255),
+                        Random.nextInt(255)
+                    )
+                }
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp)
+                        .clickable(
+                            onClick = { onChangeState(!completed) }
+                        ),
+                    elevation = CardDefaults.cardElevation(1.dp)
+                ) {
+                    ConstraintLayout(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.White)
+                    ) {
+                        val (boxLine, checkBox, taskText, dayTimeText, arrow, calendar) = createRefs()
+                        Box(
+                            modifier = Modifier
+                                .width(8.dp)
+                                .background(colorLine)
+                                .constrainAs(boxLine) {
+                                    start.linkTo(parent.start)
+                                    top.linkTo(parent.top)
+                                    bottom.linkTo(parent.bottom)
+                                    height = Dimension.fillToConstraints
+                                }
+                        )
+                        CircleCheckBox(
+                            completed, onChangeState,
+                            Modifier
+                                .padding(10.dp)
+                                .constrainAs(checkBox) {
+                                    start.linkTo(boxLine.end)
+                                    top.linkTo(parent.top)
+                                }
+                        )
+                        Text(
+                            task.task,
+                            modifier = Modifier
+                                .padding(top = 15.dp)
+                                .constrainAs(taskText) {
+                                    start.linkTo(checkBox.end)
+                                    top.linkTo(parent.top)
+                                    end.linkTo(arrow.start)
+                                    horizontalBias = 0f
+                                    width = Dimension.fillToConstraints
+                                },
+                            style = TextStyle(
+                                color = Color.Black,
+                                fontSize = 20.sp
+                            )
+                        )
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = "ic_calendar",
+                            tint = Color.LightGray,
+                            modifier = Modifier
+                                .padding(vertical = 10.dp)
+                                .constrainAs(calendar) {
+                                    start.linkTo(checkBox.end)
+                                    top.linkTo(taskText.bottom)
+                                    horizontalBias = 0f
+                                }
+                        )
+                        Text(
+                            task.day + ", " + task.time,
+                            textDecoration =
+                                if (completed) TextDecoration.LineThrough
+                                else TextDecoration.None,
+                            modifier = Modifier
+                                .padding(vertical = 10.dp)
+                                .constrainAs(dayTimeText) {
+                                    start.linkTo(calendar.end, 10.dp)
+                                    top.linkTo(taskText.bottom)
+                                    end.linkTo(arrow.start)
+                                    horizontalBias = 0f
+                                }
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "ic_arrow",
+                            tint = Color.LightGray,
+                            modifier = Modifier.constrainAs(arrow) {
+                                end.linkTo(parent.end, 10.dp)
+                                centerVerticallyTo(parent)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
+
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompleteTask( navController: NavController) {
+fun DialogTask(
+    onConfirm: (task: String, day: String, time: String) -> Unit,
+    onCancel: () -> Unit
+) {
+    var task by remember { mutableStateOf("") }
+    val day = rememberDatePickerState(initialSelectedDate = LocalDate.now())
+    val time = rememberTimePickerState(
+        initialHour = LocalTime.now().hour,
+        initialMinute = LocalTime.now().minute,
+        is24Hour = true
+    )
+    var showDataPicker by remember { mutableStateOf(false) }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TextField(
+            value = task,
+            onValueChange = { newTask ->
+                task = newTask
+            },
+            placeholder = { Text("Задача") }
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = day.getSelectedDate().toString()
+            )
+            TextButton(
+                onClick = { showDataPicker = true },
+                elevation = ButtonDefaults.buttonElevation(2.dp)
+            ) {
+                Text("Выбрать Дату")
+            }
+        }
+        if (showDataPicker)
+            DatePickerDialog(
+                onDismissRequest = { showDataPicker = false },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDataPicker = false
+                        }
+                    ) {
+                        Text("Ввод")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showDataPicker = false }
+                    ) {
+                        Text("Отмена")
+                    }
+                },
+
+                ) {
+                DatePicker(
+                    state = day
+                )
+            }
+        TimeInput(
+            state = time
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            TextButton(
+                onClick = {
+                    onCancel()
+                },
+                elevation = ButtonDefaults.buttonElevation(1.dp)
+            ) {
+                Text("Отмена")
+            }
+            TextButton(
+                onClick = {
+                    onConfirm(
+                        task,
+                        day.getSelectedDate().toString(),
+                        "%d:%d".format(time.hour, time.minute)
+                    )
+                },
+                elevation = ButtonDefaults.buttonElevation(1.dp)
+            ) {
+                Text("Подтвердить")
+            }
+        }
+    }
+}
+
+@Composable
+fun CompleteTask(navController: NavController) {
     Scaffold(
         bottomBar = { BottomNavigationBar(navController) }
     ) { innerPadding ->
         Column(
             modifier = Modifier.padding(innerPadding)
-        ){}
+        ) {}
     }
 }
 
@@ -542,8 +721,9 @@ fun Profile(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            items(1000){
-                Text("Письки",
+            items(1000) {
+                Text(
+                    "vfgdfgdf",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp)
@@ -553,27 +733,10 @@ fun Profile(navController: NavController) {
                                 Random.nextInt(255),
                                 Random.nextInt(255)
                             )
-                        ),)
+                        ),
+
+                    )
             }
         }
     }
 }
-
-/*
-ConstraintLayout(
-
-) {
-    val (nameProfile,imageProfile) = createRefs()
-    createHorizontalChain(nameProfile,imageProfile)
-    Text(
-        "",
-        modifier = Modifier.constrainAs(nameProfile) {
-            start.linkTo(parent.start)
-        })
-    Image(
-        painter = ColorPainter(Color.Green),
-        contentDescription = "ProfileImage",
-        modifier = Modifier.constrainAs(imageProfile){
-            end.linkTo(parent.end)
-        })
-}*/
