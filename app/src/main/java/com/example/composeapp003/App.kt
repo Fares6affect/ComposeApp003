@@ -24,30 +24,10 @@ import com.example.composeapp003.navigation.BottomNavigationBar
 @Composable
 fun App() {
     val navController = rememberNavController()
-    val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = backStackEntry?.destination?.route
-    var showDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         bottomBar = {BottomNavigationBar(navController)},
         containerColor = Color(233, 239, 246),
-        floatingActionButton = {
-            if(currentRoute == "home"){
-                FloatingActionButton(
-                    onClick = { showDialog = true },
-                    shape = CircleShape,
-                    elevation = FloatingActionButtonDefaults.elevation(1.dp),
-                    containerColor = Color(35, 149, 215)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "Plus",
-                        modifier = Modifier,
-                        tint = Color.White
-                    )
-                }
-            }
-        }
     ) {
             innerPadding ->
         AppNavHost(
