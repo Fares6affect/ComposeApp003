@@ -7,7 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.composeapp003.feature.completed.CompleteTaskScreen
 import com.example.composeapp003.feature.home.HomeScreen
-import com.example.composeapp003.feature.profile.ProfileScreean
+import com.example.composeapp003.feature.profile.ProfileScreen
 
 @Composable
 fun AppNavHost(
@@ -16,7 +16,7 @@ fun AppNavHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Routes.HOME,
+        startDestination = Routes.PROFILE,
         modifier = modifier
     ) {
         composable(Routes.HOME) {
@@ -26,7 +26,7 @@ fun AppNavHost(
             CompleteTaskScreen()
         }
         composable(Routes.PROFILE) {
-            ProfileScreean()
+            ProfileScreen()
         }
     }
 }
