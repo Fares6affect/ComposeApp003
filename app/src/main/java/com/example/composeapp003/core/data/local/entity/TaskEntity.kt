@@ -24,9 +24,3 @@ class TaskEntity {
         this.completed = completed
     }
 }
-
-data class Task(
-    var task: String = "",
-    var day: String = "",
-    var time: String = "",
-    var completed: Boolean = false)

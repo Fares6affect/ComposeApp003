@@ -5,30 +5,30 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
-import com.example.composeapp003.core.data.local.entity.Task
+import com.example.composeapp003.core.data.local.entity.TaskEntity
 
 interface TaskDao {
     @Query("SELECT * FROM tasks")
-    fun getTasks(): LiveData<List<Task>>
+    fun getTasks(): LiveData<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE task = :task")
-    fun getTask(task: String): List<Task>
+    fun getTask(task: String): List<TaskEntity>
 
     @Insert
-    fun addTask(task: Task)
+    fun addTask(task: TaskEntity)
 
     @Insert
-    fun addTasks(tasks:List<Task>)
+    fun addTasks(tasks:List<TaskEntity>)
 
     @Query("DELETE FROM tasks WHERE task = :task")
     fun deleteTask(task: String)
 
     @Delete
-    fun deleteTask(task: Task)
+    fun deleteTask(task: TaskEntity)
 
     @Delete
-    fun deleteTasks(tasks: List<Task>)
+    fun deleteTasks(tasks: List<TaskEntity>)
 
     @Update
-    fun updateTasks(tasks: List<Task>)
+    fun updateTasks(tasks: List<TaskEntity>)
 }
